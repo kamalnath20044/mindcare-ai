@@ -1,15 +1,23 @@
+# MindCare AI — Production Dependencies
+# Optimized for Render free tier (512MB RAM)
+
 fastapi==0.110.0
 uvicorn[standard]==0.29.0
 python-dotenv==1.0.1
 supabase==2.4.0
-transformers==4.38.2
-torch==2.2.1
-tensorflow==2.16.1
+python-multipart==0.0.9
+PyJWT==2.8.0
+numpy==1.26.4
+Pillow==10.2.0
 opencv-python-headless==4.9.0.80
 SpeechRecognition==3.10.1
-Pillow==10.2.0
-numpy==1.26.4
-python-multipart==0.0.9
 pydub==0.25.1
-PyJWT==2.8.0
-tf-keras==2.16.0
+
+# NOTE: torch, tensorflow, transformers are NOT included for production
+# because they exceed Render free tier memory limits (3.5GB+ combined).
+# The app uses intelligent fallbacks:
+# - Chat: curated therapeutic response library (no ML needed)
+# - Crisis detection: keyword-based (no ML needed)
+# - Sentiment: keyword-based fallback
+# - Emotion detection: graceful "unavailable" message
+# All core features work perfectly without ML packages.

@@ -1,0 +1,18 @@
+# Full dependencies for LOCAL development (includes ML packages)
+# Use this for local: pip install -r requirements-local.txt
+
+fastapi==0.110.0
+uvicorn[standard]==0.29.0
+python-dotenv==1.0.1
+supabase==2.4.0
+transformers==4.38.2
+torch==2.2.1
+tensorflow==2.16.1
+opencv-python-headless==4.9.0.80
+SpeechRecognition==3.10.1
+Pillow==10.2.0
+numpy==1.26.4
+python-multipart==0.0.9
+pydub==0.25.1
+PyJWT==2.8.0
+tf-keras==2.16.0
