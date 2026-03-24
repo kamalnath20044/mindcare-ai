@@ -1,0 +1,40 @@
+﻿python.exe : 2026-03-23 
+19:15:22.487371: I tensorflow
+/core/util/port.cc:113] 
+oneDNN custom operations are 
+on. You may see slightly 
+different numerical results 
+due to floating-point 
+round-off errors from 
+different computation 
+orders. To turn them off, 
+set the environment variable 
+`TF_ENABLE_ONEDNN_OPTS=0`.
+At line:1 char:1
++ & "c:\Users\kamal\OneDrive\
+Documents\final_year_project\
+backend\venv\ ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~
+    + CategoryInfo           
+   : NotSpecified: (2026-03  
+  -23 19:1...ONEDNN_OPTS=0   
+ `.:String) [], RemoteExc    
+eption
+    + FullyQualifiedErrorId  
+   : NativeCommandError
+ 
+2026-03-23 19:15:26.088198: 
+I tensorflow/core/util/port.c
+c:113] oneDNN custom 
+operations are on. You may 
+see slightly different 
+numerical results due to 
+floating-point round-off 
+errors from different 
+computation orders. To turn 
+them off, set the 
+environment variable 
+`TF_ENABLE_ONEDNN_OPTS=0`.
+OK

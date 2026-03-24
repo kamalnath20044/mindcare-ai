@@ -1,0 +1,38 @@
+# Dependencies
+node_modules/
+frontend/node_modules/
+
+# Build
+frontend/dist/
+
+# Python
+backend/__pycache__/
+backend/**/__pycache__/
+backend/venv/
+backend/.venv/
+__pycache__/
+*.pyc
+
+# Environment (IMPORTANT: never push secrets)
+.env
+backend/.env
+frontend/.env
+
+# Models (large files)
+backend/models/
+
+# IDE
+.vscode/
+.idea/
+.qodo/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Gemini
+.gemini/
+
+# Virtual environments
+.venv/
+venv/
