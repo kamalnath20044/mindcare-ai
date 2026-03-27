@@ -1,7 +1,11 @@
 import axios from "axios";
 
 function normalizeBaseUrl(url) {
-  return String(url || "").trim().replace(/\/+$/, "");
+  let u = String(url || "").trim().replace(/\/+$/, "");
+  if (u && !u.endsWith("/api")) {
+    u += "/api";
+  }
+  return u;
 }
 
 // Resolve backend URL for local and deployed environments.
