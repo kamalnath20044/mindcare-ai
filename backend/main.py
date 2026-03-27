@@ -16,20 +16,10 @@ app = FastAPI(
     version="3.0.0",
 )
 
-# CORS — allow dev + production origins
-ALLOWED_ORIGINS = [
-    "http://localhost:5173",
-    "http://localhost:3000",
-]
-
-# Add production origins from env
-PROD_FRONTEND = os.getenv("FRONTEND_URL", "")
-if PROD_FRONTEND:
-    ALLOWED_ORIGINS.append(PROD_FRONTEND)
-
+# CORS — allow all origins in development for phone/tablet testing
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=ALLOWED_ORIGINS,
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

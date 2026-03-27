@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { registerUser } from '../api/client';
+import { registerUser, API_BASE } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 
 export default function Register() {
@@ -25,7 +25,13 @@ export default function Register() {
       login(res.data.token, res.data.user);
       navigate('/dashboard');
     } catch (err) {
-      setError(err.response?.data?.detail || 'Registration failed. Try again.');
+      if (!err.response) {
+        setError(`Cannot connect to API (${API_BASE}). Check VITE_API_URL in your frontend deployment settings.`);
+      } else if (err.response.status === 404) {
+        setError(`Auth endpoint not found at ${API_BASE}/auth/register. Set VITE_API_URL to your deployed backend URL ending with /api.`);
+      } else {
+        setError(err.response?.data?.detail || 'Registration failed. Try again.');
+      }
     }
     setLoading(false);
   };

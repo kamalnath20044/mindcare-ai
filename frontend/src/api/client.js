@@ -1,6 +1,33 @@
 import axios from "axios";
 
-const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8000/api";
+function normalizeBaseUrl(url) {
+  return String(url || "").trim().replace(/\/+$/, "");
+}
+
+// Resolve backend URL for local and deployed environments.
+function getApiBase() {
+  const envUrl = normalizeBaseUrl(import.meta.env.VITE_API_URL);
+  if (envUrl) return envUrl;
+
+  const host = window.location.hostname;
+  const isLocalHost = host === "localhost" || host === "127.0.0.1";
+  const isIpv4Host = /^(\d{1,3}\.){3}\d{1,3}$/.test(host);
+
+  // Local dev: support testing from other devices on the same LAN.
+  if (host && !isLocalHost && isIpv4Host) {
+    return `http://${host}:8000/api`;
+  }
+
+  // Production fallback without env var: call same-origin /api.
+  // This works when frontend and backend are served behind a single domain.
+  if (!isLocalHost) {
+    return "/api";
+  }
+
+  return "http://localhost:8000/api";
+}
+
+export const API_BASE = getApiBase();
 
 const API = axios.create({ baseURL: API_BASE });
 
