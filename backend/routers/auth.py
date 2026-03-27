@@ -16,7 +16,7 @@ router = APIRouter(prefix="/api/auth", tags=["auth"])
 
 SECRET_KEY = "mindcare-ai-secret-key-2024"
 ALGORITHM = "HS256"
-TOKEN_EXPIRE = 86400  # 24 hours
+TOKEN_EXPIRE = 604800  # 7 days
 
 security = HTTPBearer()
 _executor = ThreadPoolExecutor(max_workers=2)
@@ -54,11 +54,13 @@ def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)):
     """Dependency to verify JWT tokens."""
     try:
         payload = jwt.decode(credentials.credentials, SECRET_KEY, algorithms=[ALGORITHM])
-        if payload["exp"] < time.time():
-            raise HTTPException(status_code=401, detail="Token expired")
         return payload
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Token expired")
     except jwt.DecodeError:
         raise HTTPException(status_code=401, detail="Invalid token")
+    except Exception:
+        raise HTTPException(status_code=401, detail="Authentication failed")
 
 
 def _supabase_register(email: str, name: str, password_hash: str, user_id: str):
@@ -128,6 +130,7 @@ async def login(req: LoginRequest):
     """Authenticate and return JWT token."""
     email = req.email.lower().strip()
     password_hash = _hash_password(req.password)
+    print(f"[AUTH] Login attempt for: {email}")
 
     # Try Supabase with a 8-second timeout
     try:
@@ -137,14 +140,19 @@ async def login(req: LoginRequest):
             timeout=8.0,
         )
 
+        print(f"[AUTH] Supabase returned {len(data) if data else 0} row(s) for {email}")
+
         if data:
             user = data[0]
             if user.get("password_hash") != password_hash:
+                print(f"[AUTH] Password mismatch for {email}")
                 raise HTTPException(status_code=401, detail="Invalid email or password")
+            print(f"[AUTH] Login successful for {email}")
             token = _create_token(user["id"], email, user["name"])
             return {"token": token, "user": {"id": user["id"], "name": user["name"], "email": email}}
         else:
             # User not found in Supabase — check in-memory too
+            print(f"[AUTH] User {email} not found in Supabase, checking in-memory")
             mem_user = _users.get(email)
             if mem_user and mem_user["password_hash"] == password_hash:
                 token = _create_token(mem_user["id"], email, mem_user["name"])

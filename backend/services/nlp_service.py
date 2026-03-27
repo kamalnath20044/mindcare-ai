@@ -127,19 +127,46 @@ THERAPEUTIC_RESPONSES = {
             "Thank you for sharing that with me. I'm here to listen.",
             "I appreciate you opening up. How does that make you feel?",
             "I'm glad you felt comfortable telling me that.",
+            "I hear you, and what you're saying is important.",
+            "That's really interesting — tell me more about that.",
+            "I understand. Let's explore that together.",
+            "Thank you for being honest with me about this.",
+            "I can see this matters to you. I'm right here.",
         ],
         "validation": [
             "Your feelings, whatever they are, are valid and important.",
             "There's no right or wrong way to feel. Everything you experience matters.",
             "Take things one step at a time. There's no rush.",
+            "It's okay to not have everything figured out right now.",
+            "What you're going through is real, and it deserves attention.",
+            "You're handling this better than you might think.",
+            "It takes strength to talk about these things openly.",
+            "Remember, it's okay to ask for support when you need it.",
         ],
         "technique": [
             "A check-in question: on a scale of 1-10, how would you rate your overall well-being right now?",
             "Try this: close your eyes for 30 seconds and just breathe. Notice how your body feels.",
             "Consider keeping a mood journal — tracking your emotions can reveal helpful patterns over time.",
+            "Here's something to try: write down 3 things you're grateful for right now, no matter how small.",
+            "Take a moment to notice your posture. Sometimes simply sitting up straight can shift your mood.",
+            "Try the '5-4-3-2-1' check: What are 5 things you can see right now? It helps anchor you to the present.",
         ],
     },
 }
+
+# Additional follow-up responses for ongoing conversations (not first message)
+FOLLOWUP_RESPONSES = [
+    "That makes a lot of sense given what you shared earlier.",
+    "I see how this connects to what we were talking about.",
+    "Building on what you said — how has that been affecting your day-to-day?",
+    "That's a really insightful observation. What do you think led to that?",
+    "I'm noticing a pattern in what you're sharing. Would you like to explore that?",
+    "It sounds like there's been some growth since we started talking. Do you feel that too?",
+    "Thank you for going deeper on this. It helps me understand your perspective better.",
+    "That's really brave of you to acknowledge. How long have you been feeling this way?",
+    "I can tell you've been thinking about this a lot. What feels most important to address?",
+    "You're making great progress by even talking about this. Keep going.",
+]
 
 KEYWORDS_MAP = {
     "stress": ["stress", "stressed", "pressure", "overwhelm", "burnout", "tired", "exhausted", "overwork", "deadline"],
@@ -203,19 +230,20 @@ def generate_response(
 def _generate_therapist_response(message: str, category: str, context: str) -> str:
     """Generate a structured AI Therapist response."""
     responses = THERAPEUTIC_RESPONSES.get(category, THERAPEUTIC_RESPONSES["default"])
+    has_prior_context = bool(context and len(context.strip().split("\n")) > 2)
 
     empathy = random.choice(responses["empathy"])
-    validation = random.choice(responses["validation"])
     technique = random.choice(responses["technique"])
 
-    # Build contextual awareness
-    context_note = ""
-    if context:
-        line_count = len(context.strip().split("\n"))
-        if line_count > 4:
-            context_note = "\n\nI've been following our conversation, and I want you to know I'm paying attention to everything you've shared. "
+    if has_prior_context:
+        # Ongoing conversation — use varied follow-up instead of generic validation
+        followup = random.choice(FOLLOWUP_RESPONSES)
+        validation = followup
+    else:
+        # First message — use standard validation
+        validation = random.choice(responses["validation"])
 
-    # Also try the generative model for a more natural touch
+    # Try the generative model for a more natural touch
     generated_part = ""
     try:
         pipe = _get_text_gen_pipeline()
@@ -231,7 +259,7 @@ def _generate_therapist_response(message: str, category: str, context: str) -> s
         pass
 
     # Compose the full therapeutic response
-    response = f"{empathy} {validation}{context_note}{generated_part}\n\n💡 **Try this:** {technique}"
+    response = f"{empathy} {validation}{generated_part}\n\n💡 **Try this:** {technique}"
     return response
 
 

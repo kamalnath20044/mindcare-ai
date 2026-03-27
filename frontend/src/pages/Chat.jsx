@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { sendMessage, clearChatHistory } from '../api/client';
+import { sendMessage, clearChatHistory, getChatHistory } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import EmergencyBanner from '../components/EmergencyBanner';
 import CrisisModal from '../components/CrisisModal';
@@ -16,12 +16,41 @@ export default function Chat() {
   ]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
+  const [historyLoading, setHistoryLoading] = useState(true);
   const [distress, setDistress] = useState(false);
   const [therapistMode, setTherapistMode] = useState(true);
   const [isRecording, setIsRecording] = useState(false);
   const [crisisData, setCrisisData] = useState(null);
   const chatEndRef = useRef(null);
   const mediaRecorderRef = useRef(null);
+
+  // Load past chat history from database on mount
+  useEffect(() => {
+    const loadHistory = async () => {
+      try {
+        const res = await getChatHistory(userId);
+        const history = res.data?.history;
+        if (history && history.length > 0) {
+          const pastMessages = history.map((msg) => ({
+            role: msg.role === 'user' ? 'user' : 'ai',
+            content: msg.content,
+            time: new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            sentiment: msg.sentiment ? { label: msg.sentiment } : undefined,
+          }));
+          setMessages(pastMessages);
+        }
+      } catch {
+        // If history fetch fails, keep the default greeting
+      } finally {
+        setHistoryLoading(false);
+      }
+    };
+    if (userId !== 'demo-user') {
+      loadHistory();
+    } else {
+      setHistoryLoading(false);
+    }
+  }, [userId]);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -166,6 +195,11 @@ export default function Chat() {
 
         {/* Messages — WhatsApp style */}
         <div className="chat-messages">
+          {historyLoading && (
+            <div className="message message-ai" style={{ textAlign: 'center', opacity: 0.7 }}>
+              <p>Loading chat history...</p>
+            </div>
+          )}
           {messages.map((msg, i) => (
             <div key={i} className={`message message-${msg.role === 'user' ? 'user' : 'ai'}`}>
               {formatContent(msg.content)}
