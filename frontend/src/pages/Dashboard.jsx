@@ -2,8 +2,13 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { Link } from 'react-router-dom';
 import { getDashboardStats, getPersonalizedGreeting, getRecommendations } from '../api/client';
-import { checkIn, getStreak } from '../api/client';
+import { checkIn, getStreak, getAssessmentTrends, getHomeworkStats } from '../api/client';
 import FollowUpBanner from '../components/FollowUpBanner';
+
+const SEVERITY_COLORS = {
+  none: '#4caf50', mild: '#ff9800', moderate: '#ff5722',
+  moderately_severe: '#f44336', severe: '#d32f2f',
+};
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -14,12 +19,16 @@ export default function Dashboard() {
   const [streak, setStreak] = useState(null);
   const [recommendations, setRecommendations] = useState(null);
   const [checkedIn, setCheckedIn] = useState(false);
+  const [assessments, setAssessments] = useState(null);
+  const [hwStats, setHwStats] = useState(null);
 
   useEffect(() => {
     getPersonalizedGreeting(userId, userName).then(r => setGreeting(r.data.greeting)).catch(() => setGreeting(`Welcome back, ${userName}! 👋`));
     getDashboardStats(userId).then(r => setStats(r.data)).catch(() => {});
     getStreak(userId).then(r => setStreak(r.data)).catch(() => {});
     getRecommendations(userId).then(r => setRecommendations(r.data)).catch(() => {});
+    getAssessmentTrends(userId).then(r => setAssessments(r.data)).catch(() => {});
+    getHomeworkStats(userId).then(r => setHwStats(r.data)).catch(() => {});
   }, [userId, userName]);
 
   const handleCheckIn = async () => {
@@ -31,12 +40,12 @@ export default function Dashboard() {
   };
 
   const features = [
-    { icon: '🗣️', title: 'AI Therapist', desc: 'Context-aware therapeutic conversations with crisis safety', tag: 'LLM-POWERED', path: '/chat', color: '#3bb89c' },
-    { icon: '😊', title: 'Emotion Detection', desc: 'Real-time facial emotion analysis via webcam', tag: 'COMPUTER VISION', path: '/emotion', color: '#f59e0b' },
-    { icon: '📊', title: 'Analytics', desc: 'Mood trends, insights, and mental health analytics', tag: 'ANALYTICS', path: '/analytics', color: '#6366f1' },
-    { icon: '📝', title: 'Mood Tracker', desc: 'Log and track your emotional patterns over time', tag: 'TRACKING', path: '/mood', color: '#ec4899' },
-    { icon: '🧘', title: 'Wellness Tools', desc: 'Breathing exercises, meditation, and relaxation', tag: 'SELF-CARE', path: '/wellness', color: '#3b82f6' },
-    { icon: '🆘', title: 'Crisis Support', desc: 'Emergency resources and safety protocols', tag: 'SAFETY', path: '/chat', color: '#ef4444' },
+    { icon: '🌿', title: 'AI Companion', desc: 'Peaceful, CBT-powered conversations', tag: 'SUPPORT', path: '/chat', color: '#7CAE7A' },
+    { icon: '📋', title: 'Assessments', desc: 'PHQ-9 depression & GAD-7 anxiety screening', tag: 'CLINICAL', path: '/assessment', color: '#5C8A5A' },
+    { icon: '📚', title: 'Homework', desc: 'CBT exercises with tracking & follow-up', tag: 'CBT LOOP', path: '/homework', color: '#E8C169' },
+    { icon: '📝', title: 'Mood Tracker', desc: 'Log and track your emotional patterns', tag: 'TRACKING', path: '/mood', color: '#D4726A' },
+    { icon: '📊', title: 'Analytics', desc: 'Mood trends, insights, and progress', tag: 'INSIGHTS', path: '/analytics', color: '#6BA3BE' },
+    { icon: '🧘', title: 'Wellness Tools', desc: 'Breathing, meditation, and relaxation', tag: 'SELF-CARE', path: '/wellness', color: '#E8A86D' },
   ];
 
   return (
@@ -44,12 +53,12 @@ export default function Dashboard() {
       <FollowUpBanner />
 
       <div className="page-header">
-        <span className="page-tag">🏠 Dashboard</span>
+        <span className="page-tag">🌿 Dashboard</span>
         <h1>{greeting || `Welcome back, ${userName}! 👋`}</h1>
-        <p>Your AI-powered mental health companion is ready to help</p>
+        <p>Your AI-powered mental health companion — CBT + GPT-3.5</p>
       </div>
 
-      {/* ─── Daily Check-In ─── */}
+      {/* Daily Check-In */}
       <div className="card" style={{ marginBottom: 20, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
         <div>
           <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: 4 }}>
@@ -64,7 +73,7 @@ export default function Dashboard() {
         )}
       </div>
 
-      {/* ─── Stats Grid ─── */}
+      {/* Stats Grid */}
       <div className="stats-grid">
         <div className="stat-card">
           <div className="stat-icon">💬</div>
@@ -82,13 +91,55 @@ export default function Dashboard() {
           <div className="stat-label">Day Streak</div>
         </div>
         <div className="stat-card">
-          <div className="stat-icon">😊</div>
-          <div className="stat-value">{stats?.total_emotions_detected || 0}</div>
-          <div className="stat-label">Emotions</div>
+          <div className="stat-icon">✅</div>
+          <div className="stat-value">{hwStats?.completed || 0}</div>
+          <div className="stat-label">Homework Done</div>
         </div>
       </div>
 
-      {/* ─── Personalized Recommendations ─── */}
+      {/* Assessment Status */}
+      {assessments && (assessments.phq9?.latest_score !== null || assessments.gad7?.latest_score !== null) && (
+        <div className="card" style={{ marginTop: 20, marginBottom: 20 }}>
+          <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: 14 }}>📋 Latest Assessments</h3>
+          <div className="grid-2">
+            {assessments.phq9?.latest_score !== null && (
+              <div style={{
+                padding: 14, borderRadius: 10,
+                borderLeft: `4px solid ${SEVERITY_COLORS[assessments.phq9.latest_severity] || '#ccc'}`,
+                background: 'var(--bg)',
+              }}>
+                <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 600 }}>PHQ-9 (Depression)</div>
+                <div style={{ fontSize: '1.4rem', fontWeight: 800, color: SEVERITY_COLORS[assessments.phq9.latest_severity] || '#333' }}>
+                  {assessments.phq9.latest_score}/27
+                </div>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                  {assessments.phq9.latest_severity?.replace('_', ' ')} • Trend: {assessments.phq9.trend}
+                </div>
+              </div>
+            )}
+            {assessments.gad7?.latest_score !== null && (
+              <div style={{
+                padding: 14, borderRadius: 10,
+                borderLeft: `4px solid ${SEVERITY_COLORS[assessments.gad7.latest_severity] || '#ccc'}`,
+                background: 'var(--bg)',
+              }}>
+                <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 600 }}>GAD-7 (Anxiety)</div>
+                <div style={{ fontSize: '1.4rem', fontWeight: 800, color: SEVERITY_COLORS[assessments.gad7.latest_severity] || '#333' }}>
+                  {assessments.gad7.latest_score}/21
+                </div>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                  {assessments.gad7.latest_severity} • Trend: {assessments.gad7.trend}
+                </div>
+              </div>
+            )}
+          </div>
+          <Link to="/assessment" style={{ fontSize: '0.78rem', fontWeight: 600, marginTop: 10, display: 'inline-block' }}>
+            Take new assessment →
+          </Link>
+        </div>
+      )}
+
+      {/* Personalized Recommendations */}
       {recommendations?.strategies && (
         <div className="card" style={{ marginBottom: 24 }}>
           <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: 6 }}>💡 Recommended for You</h3>
@@ -108,7 +159,7 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* ─── Quick Actions ─── */}
+      {/* Quick Actions */}
       <h2 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: 14 }}>⚡ Quick Actions</h2>
       <div className="grid-3">
         {features.map((f, i) => (

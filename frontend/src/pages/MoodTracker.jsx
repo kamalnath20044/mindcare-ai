@@ -50,7 +50,7 @@ export default function MoodTracker() {
   const recent = [...entries].reverse().slice(-14);
   const lineData = {
     labels: recent.map(e => new Date(e.created_at).toLocaleDateString([], { month: 'short', day: 'numeric' })),
-    datasets: [{ label: 'Mood', data: recent.map(e => VALUES[e.mood] || 3), borderColor: '#3bb89c', backgroundColor: 'rgba(59,184,156,0.1)', fill: true, tension: 0.4, pointBackgroundColor: '#3bb89c', pointRadius: 5 }],
+    datasets: [{ label: 'Mood', data: recent.map(e => VALUES[e.mood] || 3), borderColor: '#7CAE7A', backgroundColor: 'rgba(124, 174, 122, 0.1)', fill: true, tension: 0.4, pointBackgroundColor: '#7CAE7A', pointRadius: 5 }],
   };
   const chartOpts = {
     responsive: true, maintainAspectRatio: false,
@@ -65,13 +65,13 @@ export default function MoodTracker() {
   entries.forEach(e => { counts[e.mood] = (counts[e.mood] || 0) + 1; });
   const doughnutData = {
     labels: Object.keys(counts),
-    datasets: [{ data: Object.values(counts), backgroundColor: ['#3bb89c', '#6bcab5', '#b2bec3', '#ff6b6b', '#fbc531', '#e74c3c', '#f59e0b'], borderWidth: 0 }],
+    datasets: [{ data: Object.values(counts), backgroundColor: ['#7CAE7A', '#5C8A5A', '#9BAB9B', '#D4726A', '#E8C169', '#c0524a', '#E8A86D'], borderWidth: 0 }],
   };
 
   return (
     <div>
       <div className="page-header">
-        <span className="page-tag">📊 Analytics</span>
+        <span className="page-tag">🌿 Analytics</span>
         <h1>Mood Tracker</h1>
         <p>Log your mood and discover emotional patterns over time</p>
       </div>

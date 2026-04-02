@@ -20,8 +20,14 @@ export default function Sidebar() {
     {
       label: 'AI Features',
       items: [
-        { to: '/chat', icon: '💬', label: 'AI Therapist', badge: 'AI' },
-        { to: '/emotion', icon: '😊', label: 'Emotion Detection', badge: 'Live' },
+        { to: '/chat', icon: '💬', label: 'AI Therapist', badge: 'GPT' },
+      ],
+    },
+    {
+      label: 'Assessments',
+      items: [
+        { to: '/assessment', icon: '📋', label: 'PHQ-9 / GAD-7', badge: 'New' },
+        { to: '/homework', icon: '📚', label: 'Homework', badge: 'CBT' },
       ],
     },
     {
@@ -34,7 +40,13 @@ export default function Sidebar() {
     {
       label: 'Insights',
       items: [
-        { to: '/analytics', icon: '📊', label: 'Analytics', badge: 'New' },
+        { to: '/analytics', icon: '📊', label: 'Analytics' },
+      ],
+    },
+    {
+      label: 'Admin',
+      items: [
+        { to: '/admin', icon: '🏥', label: 'Admin Dashboard', badge: '🔒' },
       ],
     },
   ];
@@ -51,10 +63,15 @@ export default function Sidebar() {
 
       <aside className={`sidebar ${open ? 'open' : ''}`}>
         <div className="sidebar-header">
-          <div className="sidebar-logo">🧠</div>
+          <div className="sidebar-logo">
+            <svg width="22" height="22" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+              <path d="M 160 170 Q 160 140, 190 140 L 322 140 Q 352 140, 352 170 L 352 280 Q 352 310, 322 310 L 230 310 L 190 350 L 200 310 L 190 310 Q 160 310, 160 280 Z" fill="white" opacity="0.95"/>
+              <path d="M 256 180 C 230 210, 220 260, 256 300 C 292 260, 282 210, 256 180 Z" fill="rgba(255,255,255,0.5)"/>
+            </svg>
+          </div>
           <div className="sidebar-brand">
             <h1>MindCare AI</h1>
-            <span>Mental Health Support</span>
+            <span>Calm Sage • CBT + GPT</span>
           </div>
         </div>
 

@@ -163,9 +163,9 @@ export default function Chat() {
   return (
     <div>
       <div className="page-header">
-        <span className="page-tag">💬 AI-Powered Therapy</span>
-        <h1>AI Therapist</h1>
-        <p>Smart, empathetic conversations powered by machine learning</p>
+        <span className="page-tag">🌿 Calm Space</span>
+        <h1>Your AI Companion</h1>
+        <p>A safe, private space for empathetic conversations and CBT support</p>
       </div>
 
       {distress && <EmergencyBanner onClose={() => setDistress(false)} />}
@@ -175,9 +175,9 @@ export default function Chat() {
         {/* Header — WhatsApp style */}
         <div className="chat-header">
           <div className="chat-header-left">
-            <div className="chat-avatar">🧠</div>
+            <div className="chat-avatar">🌿</div>
             <div className="chat-header-info">
-              <h3>AI Mental Health Assistant</h3>
+              <h3>MindCare AI Companion</h3>
               <div className="chat-status">
                 <span className="dot"></span>
                 Online • Ready to listen

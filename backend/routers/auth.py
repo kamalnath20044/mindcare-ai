@@ -1,4 +1,4 @@
-"""Authentication router — JWT login & registration."""
+"""Authentication router — JWT login & registration with bcrypt."""
 
 from fastapi import APIRouter, HTTPException, Depends  # type: ignore
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials  # type: ignore
@@ -11,12 +11,14 @@ import uuid
 import jwt  # type: ignore
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
+from config import JWT_SECRET, JWT_ALGORITHM, JWT_EXPIRE_SECONDS  # type: ignore
+from middleware.sanitizer import sanitize_string  # type: ignore
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
-SECRET_KEY = "mindcare-ai-secret-key-2024"
-ALGORITHM = "HS256"
-TOKEN_EXPIRE = 604800  # 7 days
+SECRET_KEY = JWT_SECRET
+ALGORITHM = JWT_ALGORITHM
+TOKEN_EXPIRE = JWT_EXPIRE_SECONDS
 
 security = HTTPBearer()
 _executor = ThreadPoolExecutor(max_workers=2)
@@ -37,7 +39,24 @@ class LoginRequest(BaseModel):
 
 
 def _hash_password(password: str) -> str:
-    return hashlib.sha256(password.encode()).hexdigest()
+    """Hash password using bcrypt. Falls back to SHA256 if bcrypt is unavailable."""
+    try:
+        import bcrypt  # type: ignore
+        return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
+    except ImportError:
+        return hashlib.sha256(password.encode()).hexdigest()
+
+
+def _verify_password(password: str, password_hash: str) -> bool:
+    """Verify password against hash. Supports both bcrypt and SHA256."""
+    try:
+        import bcrypt  # type: ignore
+        if password_hash.startswith("$2"):  # bcrypt hash
+            return bcrypt.checkpw(password.encode(), password_hash.encode())
+    except ImportError:
+        pass
+    # Fallback: SHA256 comparison
+    return hashlib.sha256(password.encode()).hexdigest() == password_hash
 
 
 def _create_token(user_id: str, email: str, name: str) -> str:
@@ -90,7 +109,8 @@ def _supabase_login(email: str, password_hash: str):
 @router.post("/register")
 async def register(req: RegisterRequest):
     """Register a new user."""
-    email = req.email.lower().strip()
+    email = sanitize_string(req.email.lower().strip())
+    name = sanitize_string(req.name)
     user_id = str(uuid.uuid4())
     password_hash = _hash_password(req.password)
 
@@ -144,7 +164,7 @@ async def login(req: LoginRequest):
 
         if data:
             user = data[0]
-            if user.get("password_hash") != password_hash:
+            if not _verify_password(req.password, user.get("password_hash", "")):
                 print(f"[AUTH] Password mismatch for {email}")
                 raise HTTPException(status_code=401, detail="Invalid email or password")
             print(f"[AUTH] Login successful for {email}")
@@ -154,7 +174,8 @@ async def login(req: LoginRequest):
             # User not found in Supabase — check in-memory too
             print(f"[AUTH] User {email} not found in Supabase, checking in-memory")
             mem_user = _users.get(email)
-            if mem_user and mem_user["password_hash"] == password_hash:
+            # For in-memory users, use direct verification
+            if mem_user and _verify_password(req.password, mem_user["password_hash"]):
                 token = _create_token(mem_user["id"], email, mem_user["name"])
                 return {"token": token, "user": {"id": mem_user["id"], "name": mem_user["name"], "email": email}}
             raise HTTPException(status_code=401, detail="Invalid email or password")
@@ -165,7 +186,7 @@ async def login(req: LoginRequest):
         # Fallback to in-memory
         print(f"[AUTH] Supabase unavailable ({type(e).__name__}), using in-memory fallback")
         user = _users.get(email)
-        if not user or user["password_hash"] != password_hash:
+        if not user or not _verify_password(req.password, user["password_hash"]):
             raise HTTPException(status_code=401, detail="Invalid email or password")
 
         token = _create_token(user["id"], email, user["name"])
