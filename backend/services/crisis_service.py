@@ -34,7 +34,7 @@ MODERATE_KEYWORDS = [
 EMERGENCY_RESOURCES = [
     {"name": "National Suicide Prevention Lifeline", "number": "988", "country": "US", "available": "24/7"},
     {"name": "Crisis Text Line", "number": "Text HOME to 741741", "country": "US", "available": "24/7"},
-    {"name": "iCall", "number": "9152987821", "country": "India", "available": "Mon-Sat, 8AM-10PM"},
+    {"name": "Call (Tamilnadu)", "number": "7812811773", "country": "India", "available": "24/7"},
     {"name": "Vandrevala Foundation", "number": "1860-2662-345", "country": "India", "available": "24/7"},
     {"name": "AASRA", "number": "91-22-27546669", "country": "India", "available": "24/7"},
     {"name": "Samaritans", "number": "116 123", "country": "UK", "available": "24/7"},
@@ -54,7 +54,7 @@ SAFETY_RESPONSES = {
         "going through something really intense right now.\n\n"
         "💙 Please consider reaching out to a professional who can help:\n"
         "• **988 Lifeline**: Call or text 988\n"
-        "• **iCall**: 9152987821 (India)\n\n"
+        "• **Call (Tamilnadu)**: 7812811773 (India)\n\n"
         "Would you like me to share some coping strategies while you have a chance to connect with someone?"
     ),
     "moderate": (

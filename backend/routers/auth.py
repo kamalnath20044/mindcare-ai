@@ -1,11 +1,17 @@
-"""Authentication router — JWT login & registration with bcrypt."""
+"""Authentication router — JWT login & registration with Role-Based Access Control (RBAC).
+
+Roles:
+  - user (patient)    → redirects to /dashboard
+  - admin / therapist → redirects to /admin
+
+JWT payload includes: user_id, email, name, is_admin
+"""
 
 from fastapi import APIRouter, HTTPException, Depends  # type: ignore
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials  # type: ignore
 from pydantic import BaseModel  # type: ignore
 from typing import Optional
 import hashlib
-import secrets
 import time
 import uuid
 import jwt  # type: ignore
@@ -23,9 +29,11 @@ TOKEN_EXPIRE = JWT_EXPIRE_SECONDS
 security = HTTPBearer()
 _executor = ThreadPoolExecutor(max_workers=2)
 
-# In-memory user store (fallback when Supabase is unavailable)
+# In-memory fallback store
 _users: dict = {}
 
+
+# ─── Models ───
 
 class RegisterRequest(BaseModel):
     name: str
@@ -38,8 +46,10 @@ class LoginRequest(BaseModel):
     password: str
 
 
+# ─── Password Hashing ───
+
 def _hash_password(password: str) -> str:
-    """Hash password using bcrypt. Falls back to SHA256 if bcrypt is unavailable."""
+    """Hash password using bcrypt. Falls back to SHA256."""
     try:
         import bcrypt  # type: ignore
         return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
@@ -48,29 +58,32 @@ def _hash_password(password: str) -> str:
 
 
 def _verify_password(password: str, password_hash: str) -> bool:
-    """Verify password against hash. Supports both bcrypt and SHA256."""
+    """Verify password — supports bcrypt and SHA256."""
     try:
         import bcrypt  # type: ignore
-        if password_hash.startswith("$2"):  # bcrypt hash
+        if password_hash.startswith("$2"):
             return bcrypt.checkpw(password.encode(), password_hash.encode())
     except ImportError:
         pass
-    # Fallback: SHA256 comparison
     return hashlib.sha256(password.encode()).hexdigest() == password_hash
 
 
-def _create_token(user_id: str, email: str, name: str) -> str:
+# ─── JWT ───
+
+def _create_token(user_id: str, email: str, name: str, is_admin: bool = False) -> str:
+    """Create JWT with is_admin role embedded."""
     payload = {
         "user_id": user_id,
         "email": email,
         "name": name,
+        "is_admin": is_admin,
         "exp": time.time() + TOKEN_EXPIRE,
     }
     return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
 
 
-def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)):
-    """Dependency to verify JWT tokens."""
+def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)) -> dict:
+    """Dependency: verify JWT and return payload."""
     try:
         payload = jwt.decode(credentials.credentials, SECRET_KEY, algorithms=[ALGORITHM])
         return payload
@@ -82,8 +95,19 @@ def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)):
         raise HTTPException(status_code=401, detail="Authentication failed")
 
 
+def require_admin(payload: dict = Depends(verify_token)) -> dict:
+    """Dependency: requires is_admin=True in JWT. Returns 403 if not admin."""
+    if not payload.get("is_admin", False):
+        raise HTTPException(
+            status_code=403,
+            detail="Access denied: Therapist/Admin role required."
+        )
+    return payload
+
+
+# ─── Supabase helpers ───
+
 def _supabase_register(email: str, name: str, password_hash: str, user_id: str):
-    """Run Supabase registration in a thread with implicit timeout."""
     from services.supabase_client import get_supabase  # type: ignore
     sb = get_supabase()
     existing = sb.table("profiles").select("id").eq("email", email).execute()
@@ -94,69 +118,72 @@ def _supabase_register(email: str, name: str, password_hash: str, user_id: str):
         "email": email,
         "name": name,
         "password_hash": password_hash,
+        "is_admin": False,
     }).execute()
     return {"ok": True}
 
 
-def _supabase_login(email: str, password_hash: str):
-    """Run Supabase login lookup in a thread with implicit timeout."""
+def _supabase_login(email: str):
     from services.supabase_client import get_supabase  # type: ignore
     sb = get_supabase()
     result = sb.table("profiles").select("*").eq("email", email).execute()
     return result.data
 
 
+# ─── Routes ───
+
 @router.post("/register")
 async def register(req: RegisterRequest):
-    """Register a new user."""
+    """Register a new user (always as patient role)."""
     email = sanitize_string(req.email.lower().strip())
     name = sanitize_string(req.name)
     user_id = str(uuid.uuid4())
     password_hash = _hash_password(req.password)
 
-    # Try Supabase with a 8-second timeout
     try:
         loop = asyncio.get_event_loop()
         result = await asyncio.wait_for(
-            loop.run_in_executor(_executor, _supabase_register, email, req.name, password_hash, user_id),
+            loop.run_in_executor(_executor, _supabase_register, email, name, password_hash, user_id),
             timeout=8.0,
         )
         if result.get("error") == "exists":
             raise HTTPException(status_code=400, detail="Email already registered")
 
-        token = _create_token(user_id, email, req.name)
-        return {"token": token, "user": {"id": user_id, "name": req.name, "email": email}}
+        token = _create_token(user_id, email, name, is_admin=False)
+        return {
+            "token": token,
+            "user": {"id": user_id, "name": name, "email": email, "is_admin": False},
+            "redirect": "/dashboard",
+        }
 
     except HTTPException:
         raise
     except (asyncio.TimeoutError, Exception) as e:
-        # Fallback to in-memory if Supabase is down/slow
         print(f"[AUTH] Supabase unavailable ({type(e).__name__}), using in-memory fallback")
         if email in _users:
             raise HTTPException(status_code=400, detail="Email already registered")
-
         _users[email] = {
-            "id": user_id,
-            "name": req.name,
-            "email": email,
-            "password_hash": password_hash,
+            "id": user_id, "name": name, "email": email,
+            "password_hash": password_hash, "is_admin": False,
         }
-        token = _create_token(user_id, email, req.name)
-        return {"token": token, "user": {"id": user_id, "name": req.name, "email": email}}
+        token = _create_token(user_id, email, name, is_admin=False)
+        return {
+            "token": token,
+            "user": {"id": user_id, "name": name, "email": email, "is_admin": False},
+            "redirect": "/dashboard",
+        }
 
 
 @router.post("/login")
 async def login(req: LoginRequest):
-    """Authenticate and return JWT token."""
+    """Authenticate user. Returns is_admin flag and redirect path in response."""
     email = req.email.lower().strip()
-    password_hash = _hash_password(req.password)
     print(f"[AUTH] Login attempt for: {email}")
 
-    # Try Supabase with a 8-second timeout
     try:
         loop = asyncio.get_event_loop()
         data = await asyncio.wait_for(
-            loop.run_in_executor(_executor, _supabase_login, email, password_hash),
+            loop.run_in_executor(_executor, _supabase_login, email),
             timeout=8.0,
         )
 
@@ -165,39 +192,57 @@ async def login(req: LoginRequest):
         if data:
             user = data[0]
             if not _verify_password(req.password, user.get("password_hash", "")):
-                print(f"[AUTH] Password mismatch for {email}")
                 raise HTTPException(status_code=401, detail="Invalid email or password")
-            print(f"[AUTH] Login successful for {email}")
-            token = _create_token(user["id"], email, user["name"])
-            return {"token": token, "user": {"id": user["id"], "name": user["name"], "email": email}}
+
+            # Read is_admin from DB — supports both is_admin (bool) and role column
+            is_admin = bool(user.get("is_admin", False)) or user.get("role") in ("admin", "therapist")
+            redirect = "/admin" if is_admin else "/dashboard"
+
+            token = _create_token(user["id"], email, user["name"], is_admin=is_admin)
+            print(f"[AUTH] Login successful for {email} | is_admin={is_admin}")
+            return {
+                "token": token,
+                "user": {
+                    "id": user["id"], "name": user["name"],
+                    "email": email, "is_admin": is_admin,
+                },
+                "redirect": redirect,
+            }
         else:
-            # User not found in Supabase — check in-memory too
-            print(f"[AUTH] User {email} not found in Supabase, checking in-memory")
+            # Check in-memory
             mem_user = _users.get(email)
-            # For in-memory users, use direct verification
             if mem_user and _verify_password(req.password, mem_user["password_hash"]):
-                token = _create_token(mem_user["id"], email, mem_user["name"])
-                return {"token": token, "user": {"id": mem_user["id"], "name": mem_user["name"], "email": email}}
+                is_admin = mem_user.get("is_admin", False)
+                token = _create_token(mem_user["id"], email, mem_user["name"], is_admin=is_admin)
+                return {
+                    "token": token,
+                    "user": {"id": mem_user["id"], "name": mem_user["name"], "email": email, "is_admin": is_admin},
+                    "redirect": "/admin" if is_admin else "/dashboard",
+                }
             raise HTTPException(status_code=401, detail="Invalid email or password")
 
     except HTTPException:
         raise
     except (asyncio.TimeoutError, Exception) as e:
-        # Fallback to in-memory
         print(f"[AUTH] Supabase unavailable ({type(e).__name__}), using in-memory fallback")
         user = _users.get(email)
         if not user or not _verify_password(req.password, user["password_hash"]):
             raise HTTPException(status_code=401, detail="Invalid email or password")
-
-        token = _create_token(user["id"], email, user["name"])
-        return {"token": token, "user": {"id": user["id"], "name": user["name"], "email": email}}
+        is_admin = user.get("is_admin", False)
+        token = _create_token(user["id"], email, user["name"], is_admin=is_admin)
+        return {
+            "token": token,
+            "user": {"id": user["id"], "name": user["name"], "email": email, "is_admin": is_admin},
+            "redirect": "/admin" if is_admin else "/dashboard",
+        }
 
 
 @router.get("/me")
 async def get_current_user(payload: dict = Depends(verify_token)):
-    """Get current authenticated user info."""
+    """Get current authenticated user info including role."""
     return {
         "user_id": payload["user_id"],
         "email": payload["email"],
         "name": payload["name"],
+        "is_admin": payload.get("is_admin", False),
     }

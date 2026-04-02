@@ -116,7 +116,7 @@ export default function Assessment() {
               border: '1px solid #feb2b2', fontSize: '0.85rem', color: '#c53030',
             }}>
               🆘 <strong>Important:</strong> Your response to question 9 indicates you may be having thoughts of self-harm.
-              Please reach out to a crisis helpline: <strong>988</strong> (US) or <strong>1860-2662-345</strong> (India, 24/7).
+              Please reach out to a crisis helpline: <strong>7812811773</strong> (Call - Tamilnadu, 24/7) or <strong>1860-2662-345</strong> (Vandrevala Foundation, India, 24/7).
             </div>
           )}
         </div>

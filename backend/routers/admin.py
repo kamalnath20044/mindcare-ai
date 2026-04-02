@@ -15,11 +15,16 @@ from services.risk_scoring_service import compute_risk_score, get_high_risk_user
 from services.therapist_alert_service import (  # type: ignore
     get_pending_alerts, acknowledge_alert, resolve_alert, get_alerts_for_user,
 )
+from routers.auth import require_admin  # type: ignore
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 
+# All admin routes are protected by require_admin dependency
+_admin = {"dependencies": [Depends(require_admin)]}
 
-@router.get("/overview")
+
+
+@router.get("/overview", dependencies=[Depends(require_admin)])
 async def admin_overview():
     """Get high-level platform statistics for the admin dashboard."""
     stats = {
@@ -72,7 +77,7 @@ async def admin_overview():
     return stats
 
 
-@router.get("/users")
+@router.get("/users", dependencies=[Depends(require_admin)])
 async def list_users(
     limit: int = Query(default=50),
     offset: int = Query(default=0),
@@ -94,19 +99,19 @@ async def list_users(
         return {"users": [], "total": 0}
 
 
-@router.get("/high-risk")
+@router.get("/high-risk", dependencies=[Depends(require_admin)])
 async def high_risk_users(limit: int = Query(default=20)):
     """Get list of high-risk users with risk scores."""
     return {"users": get_high_risk_users(limit)}
 
 
-@router.get("/risk/{user_id}")
+@router.get("/risk/{user_id}", dependencies=[Depends(require_admin)])
 async def user_risk_score(user_id: str):
     """Get detailed risk assessment for a specific user."""
     return compute_risk_score(user_id)
 
 
-@router.get("/crisis-events")
+@router.get("/crisis-events", dependencies=[Depends(require_admin)])
 async def crisis_events(
     limit: int = Query(default=50),
     user_id: Optional[str] = Query(default=None),
@@ -124,25 +129,25 @@ async def crisis_events(
         return {"events": []}
 
 
-@router.get("/alerts")
+@router.get("/alerts", dependencies=[Depends(require_admin)])
 async def admin_alerts(limit: int = Query(default=50)):
     """Get pending therapist alerts."""
     return {"alerts": get_pending_alerts(limit)}
 
 
-@router.post("/alerts/{alert_id}/acknowledge")
+@router.post("/alerts/{alert_id}/acknowledge", dependencies=[Depends(require_admin)])
 async def ack_alert(alert_id: int, by: str = Query(default="therapist")):
     """Acknowledge a therapist alert."""
     return acknowledge_alert(alert_id, by)
 
 
-@router.post("/alerts/{alert_id}/resolve")
+@router.post("/alerts/{alert_id}/resolve", dependencies=[Depends(require_admin)])
 async def res_alert(alert_id: int):
     """Resolve a therapist alert."""
     return resolve_alert(alert_id)
 
 
-@router.get("/user-detail/{user_id}")
+@router.get("/user-detail/{user_id}", dependencies=[Depends(require_admin)])
 async def user_detail(user_id: str):
     """Get detailed info about a specific user for admin review."""
     detail = {"profile": None, "risk": None, "recent_messages": [], "mood_history": [], "assessments": None, "alerts": []}
@@ -183,7 +188,7 @@ async def user_detail(user_id: str):
     return detail
 
 
-@router.get("/retention")
+@router.get("/retention", dependencies=[Depends(require_admin)])
 async def retention_stats():
     """Get user retention statistics (1/7/14/30 days)."""
     retention = {"day_1": 0, "day_7": 0, "day_14": 0, "day_30": 0, "total_users": 0}
@@ -210,7 +215,7 @@ async def retention_stats():
     return retention
 
 
-@router.get("/phq9-distribution")
+@router.get("/phq9-distribution", dependencies=[Depends(require_admin)])
 async def phq9_distribution():
     """Get PHQ-9 severity distribution across all users."""
     distribution = {"none": 0, "mild": 0, "moderate": 0, "moderately_severe": 0, "severe": 0}
@@ -238,7 +243,7 @@ async def phq9_distribution():
     return {"distribution": distribution, "total_assessed": sum(distribution.values())}
 
 
-@router.get("/weekly-summary")
+@router.get("/weekly-summary", dependencies=[Depends(require_admin)])
 async def weekly_summary():
     """Generate a weekly summary of platform activity and at-risk users."""
     week_ago = (datetime.utcnow() - timedelta(days=7)).isoformat()

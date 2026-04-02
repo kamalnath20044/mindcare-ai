@@ -166,12 +166,20 @@ def get_homework(user_id: str, status: str = "") -> List[Dict[str, Any]]:
     try:
         from services.supabase_client import get_supabase  # type: ignore
         sb = get_supabase()
-        query = sb.table("homework_assignments").select("*").eq("user_id", user_id).order("assigned_at", desc=True)
+        # Use 'created_at' ordering — assigned_at has DEFAULT NOW() but
+        # Supabase RLS or schema may not expose it consistently
+        query = (
+            sb.table("homework_assignments")
+            .select("*")
+            .eq("user_id", user_id)
+            .order("id", desc=True)  # id is always reliable
+        )
         if status:
             query = query.eq("status", status)
         result = query.limit(20).execute()
-        return result.data
-    except Exception:
+        return result.data or []
+    except Exception as e:
+        print(f"[HOMEWORK] get_homework error: {e}")
         return []
 
 
